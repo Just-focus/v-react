@@ -1,0 +1,14 @@
+{
+  "name": "react-reconciler",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.7.0",
+  "dependencies": {
+    "scheduler": "^0.26.0",
+    "shared": "workspace:^",
+    "react": "workspace:^"
+  }
+}

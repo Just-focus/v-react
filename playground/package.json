@@ -1,0 +1,17 @@
+{
+  "name": "playground",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --force",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.0",
+    "@vitejs/plugin-react": "^4.6.0",
+    "path": "^0.12.7",
+    "vite": "^7.0.4"
+  }
+}
