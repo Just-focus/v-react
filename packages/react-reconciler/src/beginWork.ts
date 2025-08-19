@@ -12,81 +12,86 @@ import { reconcileChildFibers, mountChildFibers } from './childFiber';
 import { renderWithHooks } from './fiberHooks';
 import { Lane } from './fiberLanes';
 
-export const beginWork = (workInProgress: FiberNode) => {
-  switch (workInProgress.tag) {
-    case HostRoot:
-      return updateHostRoot(workInProgress);
-    case HostComponent:
-      return updateHostComponent(workInProgress);
-    case FunctionComponent:
-      return updateFunctionComponent(workInProgress);
-    case HostText:
-      return updateHostText(workInProgress);
-    default:
+// 比较并返回子 FiberNode
+export const beginWork = (workInProgress: FiberNode, renderLane: Lane) => {
+	switch (workInProgress.tag) {
+		case HostRoot:
+			return updateHostRoot(workInProgress, renderLane);
+		case HostComponent:
+			return updateHostComponent(workInProgress);
+		case FunctionComponent:
+			return updateFunctionComponent(workInProgress, renderLane);
+		case HostText:
+			return updateHostText();
+		case Fragment:
+			return updateFragment(workInProgress);
+		default:
       console.warn('beginWork 未实现的类型', workInProgress.tag);
-      break;
-  }
-}
+			break;
+	}
+};
 
-function updateHostRoot(workInProgress: FiberNode) {
-  // 根据当前节点和工作中节点的状态进行比较，处理属性等更新逻辑
-  const baseState = workInProgress.memoizedState;
-  const updateQueue = workInProgress.updateQueue as UpdateQueue<Element>;
-  const pending = updateQueue.shared.pending;
-  
-  // 清空更新链表
-  updateQueue.shared.pending = null;
-  // 计算待更新状态的最新值
-  const { memoizedState } = processUpdateQueue(baseState, pending);
-  workInProgress.memoizedState = memoizedState;
+function updateHostRoot(workInProgress: FiberNode, renderLane: Lane) {
+	// 根据当前节点和工作中节点的状态进行比较，处理属性等更新逻辑
+	const baseState = workInProgress.memoizedState;
+	const updateQueue = workInProgress.updateQueue as UpdateQueue<Element>;
+	const pending = updateQueue.shared.pending;
+	// 清空更新链表
+	updateQueue.shared.pending = null;
+	// 计算待更新状态的最新值
+	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane);
+	workInProgress.memoizedState = memoizedState;
 
-  // 处理子节点的更新逻辑
-  const nextChildren = workInProgress.memoizedState;
-  reconcileChildren(workInProgress, nextChildren);
+	// 处理子节点的更新逻辑
+	const nextChildren = workInProgress.memoizedState;
+	reconcileChildren(workInProgress, nextChildren);
 
-  // 返回新的子节点
-  return workInProgress.child;
-}
-
-function updateHostComponent(workInProgress: FiberNode) {
-  const nextProps = workInProgress.pendingProps;
-  const nextChildren = nextProps.children;
-
-  reconcileChildren(workInProgress, nextChildren);
+	// 返回新的子节点
 	return workInProgress.child;
 }
 
-function updateHostText(workInProgress: FiberNode) {
-  return null;
+function updateHostComponent(workInProgress: FiberNode) {
+	const nextProps = workInProgress.pendingProps;
+	const nextChildren = nextProps.children;
+	reconcileChildren(workInProgress, nextChildren);
+	return workInProgress.child;
 }
+
+function updateFunctionComponent(workInProgress: FiberNode, renderLane: Lane) {
+	const nextChildren = renderWithHooks(workInProgress, renderLane);
+	reconcileChildren(workInProgress, nextChildren);
+	return workInProgress.child;
+}
+
+function updateHostText() {
+	// 没有子节点，直接返回 null
+	return null;
+}
+
+function updateFragment(workInProgress: FiberNode) {
+	const nextChildren = workInProgress.pendingProps;
+	reconcileChildren(workInProgress, nextChildren);
+	return workInProgress.child;
+}
+
 
 // 对比子节点的 current FiberNode 与 子节点的 ReactElement
 // 生成子节点对应的 workInProgress FiberNode
-function reconcileChildren(workInProgress: FiberNode, children?: ReactElementType) {
-  // alternate 指向节点的备份节点，即 current
-  const current = workInProgress.alternate;
-  if (current !== null) {
-    // 组件的更新阶段
-    workInProgress.child = reconcileChildFibers(workInProgress, current.child, children);
-  } else {
-    // 首屏渲染阶段
-    workInProgress.child = mountChildFibers(workInProgress, null, children);
-  }
-}
-
-// 
-function updateFunctionComponent(workInProgress: FiberNode) {
-  const nextChildren = renderWithHooks(workInProgress);
-  reconcileChildren(workInProgress, nextChildren);
-  return workInProgress.child;
-}
-
-// 执行函数组件中的函数
-export function renderWithHooks(workInProgress: FiberNode) {
-  // 函数保存在 type 字段中
-  const Component = workInProgress.type;
-  const props = workInProgress.pendingProps;
-  // 执行函数
-  const children = Component(props);
-  return children;
+function reconcileChildren(
+	workInProgress: FiberNode,
+	children?: ReactElementType
+) {
+	// alternate 指向节点的备份节点，即 current
+	const current = workInProgress.alternate;
+	if (current !== null) {
+		// 组件的更新阶段
+		workInProgress.child = reconcileChildFibers(
+			workInProgress,
+			current?.child,
+			children
+		);
+	} else {
+		// 首屏渲染阶段
+		workInProgress.child = mountChildFibers(workInProgress, null, children);
+	}
 }

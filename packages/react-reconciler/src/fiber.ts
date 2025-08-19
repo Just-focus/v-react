@@ -6,35 +6,37 @@ import {
 	WorkTag
 } from './workTags';
 import { NoFlags, Flags } from './fiberFlags';
+import type { Container } from 'react-dom/src/hostConfig';
 import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
 import { Effect } from './fiberHooks';
 import { CallbackNode } from 'scheduler';
 
 export class FiberNode {
   tag: WorkTag;
-  key: Key;
-  stateNode: any;
-  type: any;
-  return: FiberNode | null;
-  sibling: FiberNode | null;
-  child: FiberNode | null;
-  index: number;
-  ref: Ref;
-  pendingProps: Props;
-  memoizedProps: Props | null;
-  memoizedState: any;
-  alternate: FiberNode | null;
-  flags: Flags;
-  subtreeFlags: Flags;
-  updateQueue: unknown;
+	key: Key | null;
+	stateNode: any;
+	type: any;
+	return: FiberNode | null;
+	sibling: FiberNode | null;
+	child: FiberNode | null;
+	index: number;
+	ref: Ref;
+	pendingProps: Props;
+	memoizedProps: Props | null;
+	memoizedState: any;
+	alternate: FiberNode | null;
+	flags: Flags;
+	deletions: Array<FiberNode> | null;
+	subtreeFlags: Flags;
+	updateQueue: unknown;
 
   constructor(tag: WorkTag, pendingProps: Props, key: Key) {
     // 类型
     this.tag = tag;
-    this.key = key;
-    this.ref = null;
-    this.stateNode = null; // 节点对应的实际 DOM 节点或组件实例
-    this.type = null; // 节点的类型，可以是原生 DOM 元素、函数组件或类组件
+		this.key = key || null;
+		this.ref = null;
+		this.stateNode = null; // 节点对应的实际 DOM 节点或组件实例
+		this.type = null; // 节点的类型，可以是原生 DOM 元素、函数组件或类组件等
 
     // 构成树状结构
     this.return = null; // 指向节点的父节点
@@ -43,32 +45,48 @@ export class FiberNode {
     this.index = 0; // 索引
 
     // 作为工作单元
-    this.pendingProps = pendingProps; // 表示节点的新属性，用于在协调过程中进行更新
-    this.memoizedProps = null; // 已经更新完的属性
-    this.memoizedState = null; // 更新完成后新的 state
-
-    this.alternate = null; // 用于双缓冲，指向另一个 FiberNode 实例
-    this.flags = NoFlags; // 表示节点的副作用类型，如更新、插入、删除等
-    this.subtreeFlags = NoFlags; // 表示子树的副作用类型，如更新、插入、删除等
-    this.updateQueue = null; // 更新队列
+		this.pendingProps = pendingProps; // 表示节点的新属性，用于在协调过程中进行更新
+		this.memoizedProps = null; // 已经更新完的属性
+		this.memoizedState = null; // 更新完成后新的 State
+		this.updateQueue = null; // 更新计划队列
+		this.alternate = null; // 指向节点的备份节点，用于在协调过程中进行比较
+		this.flags = NoFlags; // 表示节点的副作用类型，如更新、插入、删除等
+		this.subtreeFlags = NoFlags; // 表示子节点的副作用类型，如更新、插入、删除等
+		this.deletions = null; // 指向待删除的子节点，用于在协调过程中进行删除
   }
 }
 
-type Container = any;
-
 export class FiberRootNode {
   container: Container;
-  current: FiberNode;
-  finishedWork: FiberNode | null;
+	current: FiberNode;
+	finishedWork: FiberNode | null;
+	pendingLanes: Lanes;
+	finishedLane: Lane;
+	pendingPassiveEffects: PendingPassiveEffects;
+	callbackNode: CallbackNode | null;
+	callbackPriority: Lane;
 
   constructor(container: Container, hostRootFiber: FiberNode) {
     this.container = container;
-    this.current = hostRootFiber;
-    // 将根节点的 stateNode 属性指向 FiberRootNode，用于表示整个 React 应用的根节点
-    hostRootFiber.stateNode = this;
-    // 指向更新后完成以后的 hostRootFiber
-    this.finishedWork = null;
+		this.current = hostRootFiber;
+		// 将根节点的 stateNode 属性指向 FiberRootNode，用于表示整个 React 应用的根节点
+		hostRootFiber.stateNode = this;
+		// 指向更新完成之后的 hostRootFiber
+		this.finishedWork = null;
+		this.pendingLanes = NoLanes;
+		this.finishedLane = NoLane;
+		this.pendingPassiveEffects = {
+			unmount: [],
+			update: []
+		};
+		this.callbackNode = null;
+		this.callbackPriority = NoLane;
   }
+}
+
+export interface PendingPassiveEffects {
+	unmount: Effect[];
+	update: Effect[];
 }
 
 // 根据 FiberRootNode.current 创建 workInProgress
@@ -107,9 +125,15 @@ export function createFiberFromElement(element: ReactElementType): FiberNode {
     // div
     fiberTag = HostComponent;
   } else if(typeof type !== 'function') {
-    console.log('Invalid element type');
+    console.warn('未定义的 type 类型', element);
   }
+
   const fiber = new FiberNode(fiberTag, props, key);
   fiber.type = type;
   return fiber;
+}
+
+export function createFiberFromFragment(elements: any[], key: Key): FiberNode {
+	const fiber = new FiberNode(Fragment, elements, key);
+	return fiber;
 }
