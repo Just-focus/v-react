@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+.turbo
+.output
+.next
+coverage
+packages/*/node_modules
+packages/*/dist
+*.min.js
+/*.lock
+/.pnp.cjs
+/.pnp.loader.mjs

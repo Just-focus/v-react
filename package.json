@@ -1,0 +1,42 @@
+{
+  "name": "v-react",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "commitlint": "commitlint --edit",
+    "lint": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx,.jsx",
+    "lint:fix": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx,.jsx --fix",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.29.3",
+  "devDependencies": {
+    "@eslint/js": "^8.31.0",
+    "eslint": "^8.44.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "globals": "^17.3.0",
+    "husky": "^9.1.7",
+    "@commitlint/config-conventional": "^17.6.0",
+    "@commitlint/cli": "^17.6.0",
+    "prettier": "^3.8.1",
+    "eslint-config-prettier": "^9.1.0",
+    "lint-staged": "^16.2.7",
+    "rollup": "^4.57.1",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "prettier --write",
+      "eslint --fix --cache"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}
