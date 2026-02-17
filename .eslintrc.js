@@ -8,7 +8,7 @@ module.exports = {
     'eslint:recommended',
     'plugin:react/recommended',
     'plugin:@typescript-eslint/recommended',
-    'prettier',
+    'plugin:prettier/recommended',
   ],
   parserOptions: {
     ecmaVersion: 2021,
@@ -17,12 +17,15 @@ module.exports = {
       jsx: true,
     },
   },
-  plugins: ['react', '@typescript-eslint', 'react-hooks'],
-  rules: {},
-  settings: {
-    react: {
-      version: 'detect',
-    },
+  plugins: ['react', '@typescript-eslint', 'react-hooks', 'prettier'],
+  rules: {
+    'prettier/prettier': 'error',
+    '@typescript-eslint/no-explicit-any': 'off',
   },
+  // settings: {
+  //   react: {
+  //     version: 'detect',
+  //   },
+  // },
   ignorePatterns: ['node_modules/', 'dist/', 'build/', 'packages/*/node_modules/'],
 };
