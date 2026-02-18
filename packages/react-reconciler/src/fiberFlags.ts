@@ -9,3 +9,7 @@ export const PassiveEffect = 0b000000000001111111111111111;
 export const Ref = 2 << 5;
 export const Hydrating = 2 << 6;
 export const HydratingAndUpdate = 2 << 7;
+
+export const MutationMask = Placement | Update | Deletion | ChildDeletion;
+export const PassiveMask = PassiveEffect | Ref;
+export const LayoutMask = Update | Ref;
