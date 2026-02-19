@@ -15,7 +15,7 @@ export const completeWork = (wip: FiberNode) => {
         // update
       } else {
         // 1、构建DOM元素 2、将DOM元素插入到正确的位置
-        const instance = createInstance(wip.type, newProps);
+        const instance = createInstance(wip.type);
         appendAllChildren(instance, wip);
         wip.stateNode = instance;
       }
