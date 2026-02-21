@@ -1,5 +1,5 @@
 import { Key, Props, ReactElementType, Ref } from 'shared/ReactTypes';
-import { FunctionComponent, HostComponent, WorkTag } from './workTags';
+import { Fragment, FunctionComponent, HostComponent, WorkTag } from './workTags';
 import { Flags, NoFlags } from './fiberFlags';
 import { Container } from 'hostConfig';
 
@@ -20,10 +20,11 @@ export class FiberNode {
   flags: Flags;
   subtreeFlags: Flags;
   updateQueue: unknown;
+  deletions: FiberNode[] | null;
 
   constructor(tag: WorkTag, pendingProps: Props, key: Key) {
     this.tag = tag;
-    this.key = key;
+    this.key = key || null;
     this.stateNode = null;
     this.type = null;
 
@@ -44,6 +45,7 @@ export class FiberNode {
     this.alternate = null; // 双缓存
     this.flags = NoFlags; // 副作用
     this.subtreeFlags = NoFlags; // 子树的副作用
+    this.deletions = null; // 需要删除的子Fiber列表
   }
 }
 
@@ -75,6 +77,7 @@ export function createWorkInProgress(current: FiberNode, pendingProps: Props): F
     wip.pendingProps = pendingProps;
     wip.flags = NoFlags;
     wip.subtreeFlags = NoFlags;
+    wip.deletions = null;
   }
   wip.type = current.type;
   wip.updateQueue = current.updateQueue;
@@ -85,7 +88,7 @@ export function createWorkInProgress(current: FiberNode, pendingProps: Props): F
   return wip;
 }
 
-export const createFiberFromElement = (element: ReactElementType): FiberNode => {
+export function createFiberFromElement(element: ReactElementType): FiberNode {
   const { type, key, props } = element;
   let fiberTag: WorkTag = FunctionComponent;
 
@@ -99,4 +102,9 @@ export const createFiberFromElement = (element: ReactElementType): FiberNode => 
   const fiber = new FiberNode(fiberTag, props, key);
   fiber.type = type;
   return fiber;
-};
+}
+
+export function createFiberFromFragment(elements: any[], key: Key): FiberNode {
+  const fiber = new FiberNode(Fragment, elements, key);
+  return fiber;
+}

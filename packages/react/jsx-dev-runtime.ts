@@ -1,3 +1,1 @@
-export { jsxDev } from './src/jsx';
-
-console.log('222');
+export { jsx, jsxDev } from './src/jsx';

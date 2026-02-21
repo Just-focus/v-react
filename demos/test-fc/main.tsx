@@ -1,14 +1,25 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import ReactDom from 'react-dom/client';
 
-function App() {
-  const [num] = useState(0);
-
+function Child() {
   return (
     <div>
-      {/* <span>可以正常渲染嘛</span> */}
-      <span>{num}</span>
+      <>
+        <span>Child1</span>
+        <span>Child2</span>
+      </>
     </div>
+  );
+}
+
+function App() {
+  const [num, setNum] = useState(0);
+
+  return (
+    <>
+      <span>App</span>
+      <Child />
+    </>
   );
 }
 

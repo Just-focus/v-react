@@ -1,7 +1,14 @@
-import { appendChildToContainer, Container } from 'hostConfig';
+import {
+  appendChildToContainer,
+  commitUpdate,
+  Container,
+  removeChild,
+  Instance,
+  insertChildToContainer,
+} from 'hostConfig';
 import { FiberNode, FiberRootNode } from './fiber';
-import { MutationMask, NoFlags, Placement } from './fiberFlags';
-import { HostComponent, HostRoot, HostText } from './workTags';
+import { ChildDeletion, MutationMask, NoFlags, Placement, Update } from './fiberFlags';
+import { FunctionComponent, HostComponent, HostRoot, HostText } from './workTags';
 
 let nextEffect: FiberNode | null = null;
 
@@ -38,23 +45,163 @@ const commitMutationEffectsOnFiber = (finishedWork: FiberNode) => {
     commitPlacement(finishedWork);
     finishedWork.flags &= ~Placement;
   }
+  if ((flags & Update) !== NoFlags) {
+    commitUpdate(finishedWork);
+    finishedWork.flags &= ~Update;
+  }
+  if ((flags & ChildDeletion) !== NoFlags) {
+    const deletions = finishedWork.deletions;
+    if (deletions !== null) {
+      deletions.forEach((childToDelete) => {
+        commitDeletion(childToDelete);
+      });
+    }
+    finishedWork.flags &= ~ChildDeletion;
+  }
 };
 
-const commitPlacement = (finishedWork: FiberNode) => {
-  // parent DOM
-  const hostParent = getHostParentFiber(finishedWork);
+function recordHostChildrenToDelete(childrenToDeletes: FiberNode[], unmountFiber: FiberNode) {
+  // 1、找到第一个root host节点
+  const lastOne = childrenToDeletes[childrenToDeletes.length - 1];
 
-  // finishedWork ~~ DOM
-  if (hostParent !== null) {
-    appendPlacementNodeIntoContainer(finishedWork, hostParent);
+  if (!lastOne) {
+    childrenToDeletes.push(unmountFiber);
+  } else {
+    let node = lastOne.sibling;
+    while (node !== null) {
+      if (unmountFiber === node) {
+        childrenToDeletes.push(unmountFiber);
+      }
+      node = node.sibling;
+    }
+  }
+}
+
+function commitDeletion(childToDelete: FiberNode) {
+  const rootChildrenToDelete: FiberNode[] = [];
+
+  // 递归子树
+  commitNestedComponent(childToDelete, (unmountFiber) => {
+    switch (unmountFiber.tag) {
+      case HostComponent:
+        recordHostChildrenToDelete(rootChildrenToDelete, unmountFiber);
+        // TODO 卸载ref
+        return;
+      case HostText:
+        recordHostChildrenToDelete(rootChildrenToDelete, unmountFiber);
+        return;
+      case FunctionComponent:
+        // TODO 卸载effect unMount
+        return;
+      default:
+        if (__DEV__) {
+          console.warn('commitDeletion未实现的类型', unmountFiber);
+        }
+    }
+  });
+
+  // 移除rootHostNode的DOM
+  if (rootChildrenToDelete.length > 0) {
+    const hostParent = getHostParent(childToDelete);
+    if (hostParent !== null) {
+      rootChildrenToDelete.forEach((node) => {
+        removeChild(node.stateNode, hostParent);
+      });
+    }
   }
 
+  childToDelete.return = null;
+  childToDelete.child = null;
+  childToDelete.deletions = null;
+}
+
+function commitNestedComponent(root: FiberNode, onCommitFiberUnmount: (fiber: FiberNode) => void) {
+  let node = root;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    onCommitFiberUnmount(node);
+
+    if (node.child !== null) {
+      // 向下遍历
+      node.child.return = node;
+      node = node.child;
+      continue;
+    }
+
+    if (node === root) {
+      // 终止条件
+      return;
+    }
+
+    while (node.sibling === null) {
+      if (node.return === null || node.return === root) {
+        return;
+      }
+      // 向上遍历
+      node = node.return;
+    }
+
+    node.sibling.return = node.return;
+    node = node.sibling;
+
+    if (__DEV__) {
+      console.warn('commitNestedComponent未实现的类型', node);
+    }
+  }
+}
+
+const commitPlacement = (finishedWork: FiberNode) => {
   if (__DEV__) {
     console.warn('执行Placement操作', finishedWork);
   }
+  // parent DOM
+  const hostParent = getHostParent(finishedWork);
+  // host sibling
+  const hostSibling = getHostSibling(finishedWork);
+
+  // finishedWork ~~ DOM
+  if (hostParent !== null) {
+    insertAndAppendPlacementNodeIntoContainer(finishedWork, hostParent, hostSibling);
+  }
 };
 
-function getHostParentFiber(fiber: FiberNode): Container | null {
+function getHostSibling(fiber: FiberNode): Element | null {
+  let node: FiberNode = fiber;
+
+  // eslint-disable-next-line no-constant-condition
+  findSibling: while (true) {
+    while (node.sibling === null) {
+      const parent = node.return;
+      if (parent === null || parent.tag === HostComponent || parent.tag === HostRoot) {
+        return null;
+      }
+      node = parent;
+    }
+
+    node.sibling.return = node.return;
+    node = node.sibling;
+
+    while (node.tag !== HostComponent && node.tag !== HostText) {
+      // 向下遍历
+      if ((node.flags & Placement) !== NoFlags) {
+        continue findSibling;
+      }
+      if (node.child === null) {
+        continue findSibling;
+      } else {
+        node.child.return = node;
+        node = node.child;
+      }
+    }
+
+    if ((node.flags & Placement) !== NoFlags) {
+      return node.stateNode;
+    }
+  }
+}
+
+function getHostParent(fiber: FiberNode): Container | null {
   let parent = fiber.return;
 
   while (parent !== null) {
@@ -74,19 +221,27 @@ function getHostParentFiber(fiber: FiberNode): Container | null {
   return null;
 }
 
-function appendPlacementNodeIntoContainer(finishedWork: FiberNode, hostParent: Container) {
+function insertAndAppendPlacementNodeIntoContainer(
+  finishedWork: FiberNode,
+  hostParent: Container,
+  before?: Instance | null,
+) {
   if (finishedWork.tag === HostComponent || finishedWork.tag === HostText) {
-    appendChildToContainer(hostParent, finishedWork.stateNode);
+    if (before) {
+      insertChildToContainer(finishedWork.stateNode, hostParent, before);
+    } else {
+      appendChildToContainer(hostParent, finishedWork.stateNode);
+    }
     return;
   }
 
   const child = finishedWork.child;
   if (child !== null) {
-    appendPlacementNodeIntoContainer(child, hostParent);
+    insertAndAppendPlacementNodeIntoContainer(child, hostParent);
     let sibling = child.sibling;
 
     while (sibling !== null) {
-      appendPlacementNodeIntoContainer(sibling, hostParent);
+      insertAndAppendPlacementNodeIntoContainer(sibling, hostParent);
       sibling = sibling.sibling;
     }
   }

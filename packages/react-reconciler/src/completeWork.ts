@@ -1,7 +1,12 @@
 import { createInstance, appendInitialChild, createTextInstance, Container } from 'hostConfig';
 import { FiberNode } from './fiber';
-import { FunctionComponent, HostComponent, HostRoot, HostText } from './workTags';
-import { NoFlags } from './fiberFlags';
+import { Fragment, FunctionComponent, HostComponent, HostRoot, HostText } from './workTags';
+import { NoFlags, Update } from './fiberFlags';
+import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
+
+function markUpdate(fiber: FiberNode) {
+  fiber.flags |= Update;
+}
 
 // 比较新旧虚拟DOM，返回需要更新的fiber节点
 export const completeWork = (wip: FiberNode) => {
@@ -13,9 +18,11 @@ export const completeWork = (wip: FiberNode) => {
     case HostComponent:
       if (current !== null && wip.stateNode) {
         // update
+        // TODO 需要实现：比较新旧属性，标记Update
+        updateFiberProps(wip.stateNode, newProps);
       } else {
         // 1、构建DOM元素 2、将DOM元素插入到正确的位置
-        const instance = createInstance(wip.type);
+        const instance = createInstance(wip.type, newProps);
         appendAllChildren(instance, wip);
         wip.stateNode = instance;
       }
@@ -24,6 +31,13 @@ export const completeWork = (wip: FiberNode) => {
     case HostText:
       if (current !== null && wip.stateNode) {
         // update
+        const oldText = current.memoizedProps.content;
+        const newText = newProps.content;
+
+        if (oldText !== newText) {
+          // 1、更新文本内容
+          markUpdate(wip);
+        }
       } else {
         // 1、构建DOM元素 2、将DOM元素插入到正确的位置
         const instance = createTextInstance(newProps.content);
@@ -33,6 +47,7 @@ export const completeWork = (wip: FiberNode) => {
       return null;
     case HostRoot:
     case FunctionComponent:
+    case Fragment:
       bubbleProperties(wip);
       return null;
     default:

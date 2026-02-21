@@ -1,5 +1,1 @@
-import { jsx, jsxDev } from './src/jsx';
-
-export { jsx, jsxDev };
-
-console.log('333');
+export { jsx, jsxDev, Fragment, jsxs } from './src/jsx';
