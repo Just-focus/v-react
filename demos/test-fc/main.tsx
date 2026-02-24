@@ -21,12 +21,12 @@ function App() {
     setNum((prevNum) => prevNum + 3);
   }
 
-  return (
-    <>
-      <span onClick={handleClick}>{num}</span>
-      {/* <Child /> */}
-    </>
-  );
+  setTimeout(() => {
+    if (num > 0) return;
+    setNum((prevNum) => prevNum + 4);
+  }, 4000);
+
+  return <span>{num}</span>;
 }
 
 ReactDom.createRoot(document.getElementById('root')!).render(<App />);

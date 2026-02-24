@@ -54,7 +54,6 @@ function updateHostRoot(wip: FiberNode, lane: Lane) {
   const nextChildren = wip.memoizedState;
   reconcileChildren(wip, nextChildren);
 
-  console.log('updateHostRoot', wip.child);
   return wip.child;
 }
 
@@ -63,7 +62,6 @@ function updateHostComponent(wip: FiberNode) {
   const nextProps = wip.pendingProps;
   const nextChildren = nextProps.children;
   reconcileChildren(wip, nextChildren);
-  console.log('updateHostComponent', wip.child);
   return wip.child;
 }
 

@@ -10,10 +10,6 @@ export function scheduleSyncCallback(callback: (...args: any) => void) {
 }
 
 export function flushSyncCallbacks() {
-  if (__DEV__) {
-    console.log('flushSyncCallbacks', syncQueue?.length);
-  }
-
   if (syncQueue !== null && !isFlushingSyncQueue) {
     isFlushingSyncQueue = true;
 
