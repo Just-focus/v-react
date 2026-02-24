@@ -13,12 +13,12 @@ type ExistingChildren = Map<string | number, FiberNode>;
 
 // shouldTrackEffects: 是否跟踪副作用
 function ChildrenReconciler(shouldTrackEffects: boolean) {
-  function deleteChild(returnFiber: FiberNode, childToDelete: FiberNode) {
+  // 从父节点中删除指定的子节点
+  function deleteChild(returnFiber: FiberNode, childToDelete: FiberNode): void {
     if (!shouldTrackEffects) {
       return;
     }
     const deletions = returnFiber.deletions;
-
     if (deletions === null) {
       returnFiber.deletions = [childToDelete];
       returnFiber.flags |= ChildDeletion;
@@ -27,60 +27,67 @@ function ChildrenReconciler(shouldTrackEffects: boolean) {
     }
   }
 
-  function deleteRemainingChildren(returnFiber: FiberNode, currentFiber: FiberNode | null) {
+  // 删除当前节点的所有兄弟节点
+  function deleteRemainingChildren(
+    returnFiber: FiberNode,
+    currentFirstChild: FiberNode | null,
+  ): void {
     if (!shouldTrackEffects) {
       return;
     }
-    let current = currentFiber;
-    while (current !== null) {
-      deleteChild(returnFiber, current);
-      current = current.sibling;
+
+    let childToDelete = currentFirstChild;
+    while (childToDelete !== null) {
+      deleteChild(returnFiber, childToDelete);
+      childToDelete = childToDelete.sibling;
     }
   }
 
+  // 处理单个 Element 节点的情况
+  // 对比 currentFiber 与 ReactElement，生成 workInProgress FiberNode
   function reconcileSingleElement(
     returnFiber: FiberNode,
     currentFiber: FiberNode | null,
     element: ReactElementType,
   ) {
-    const key = element.key;
+    // 组件的更新阶段
     while (currentFiber !== null) {
-      // update
-      if (currentFiber.key === key) {
+      if (currentFiber.key === element.key) {
         if (element.$$typeof === REACT_ELEMENT_TYPE) {
-          let props = element.props;
-
-          if (currentFiber.type === REACT_FRAGMENT_TYPE) {
-            props = element.props.children;
-          }
-
           if (currentFiber.type === element.type) {
-            // type相同，可以复用
+            // key 和 type 都相同，当前节点可以复用旧的 Fiber 节点
+            // 处理 Fragment 的情况
+            let props: Props = element.props;
+            if (element.type === REACT_FRAGMENT_TYPE) {
+              props = element.props.children;
+            }
+
             const existing = useFiber(currentFiber, props);
             existing.return = returnFiber;
-            // 当前节点可复用
+            // 剩下的兄弟节点标记删除
             deleteRemainingChildren(returnFiber, currentFiber.sibling);
             return existing;
           }
-          // type不同，删除旧Fiber
+          // key 相同，但 type 不同，删除所有旧的 Fiber 节点
           deleteRemainingChildren(returnFiber, currentFiber);
+          break;
         } else {
           if (__DEV__) {
-            console.warn('reconcileSingleElement未实现的类型', element);
+            console.warn('还未实现的 React 类型', element);
+            break;
           }
         }
       } else {
-        // key不同，删除旧Fiber
+        // key 不同，删除当前旧的 Fiber 节点，继续遍历兄弟节点
         deleteChild(returnFiber, currentFiber);
         currentFiber = currentFiber.sibling;
       }
     }
 
-    // 根据ReactElement创建FiberNode
+    // 创建新的 Fiber 节点
     let fiber;
-
     if (element.type === REACT_FRAGMENT_TYPE) {
-      fiber = createFiberFromFragment(element.props.children, key);
+      fiber = createFiberFromFragment(element.props.children, element.key);
     } else {
       fiber = createFiberFromElement(element);
     }
