@@ -49,7 +49,6 @@ export const jsx = function (type: ElementType, config: any, ...maybeChildren: a
     }
   }
 
-  console.log('From jsx', type, config, maybeChildren);
   return ReactElement(type, key, ref, props);
 };
 

@@ -4,19 +4,19 @@ import { processUpdateQueue, UpdateQueue } from './updateQueue';
 import { Fragment, FunctionComponent, HostComponent, HostRoot, HostText } from './workTags';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { renderWithHooks } from './fiberHooks';
+import { Lane } from './fiberLanes';
 
 // 比较新旧虚拟DOM，返回需要更新的fiber节点
-export const beginWork = (wip: FiberNode) => {
-  console.log('beginWork', wip);
+export const beginWork = (wip: FiberNode, lane: Lane) => {
   switch (wip.tag) {
     case HostRoot:
-      return updateHostRoot(wip);
+      return updateHostRoot(wip, lane);
     case HostComponent:
       return updateHostComponent(wip);
     case HostText:
       return null;
     case FunctionComponent:
-      return updateFunctionComponent(wip);
+      return updateFunctionComponent(wip, lane);
     case Fragment:
       return updateFragment(wip);
     default:
@@ -31,28 +31,30 @@ export const beginWork = (wip: FiberNode) => {
 // TODO: 实现Fragment的beginWork
 function updateFragment(wip: FiberNode) {
   const nextChildren = wip.pendingProps;
-  console.log('updateFragment', nextChildren);
   reconcileChildren(wip, nextChildren);
   return wip.child;
 }
 
-function updateFunctionComponent(wip: FiberNode) {
-  const nextChildren = renderWithHooks(wip);
+function updateFunctionComponent(wip: FiberNode, lane: Lane) {
+  const nextChildren = renderWithHooks(wip, lane);
   reconcileChildren(wip, nextChildren);
   return wip.child;
 }
 
 // 1、计算最新值 2、创建子fiberNode
-function updateHostRoot(wip: FiberNode) {
+function updateHostRoot(wip: FiberNode, lane: Lane) {
   const baseState = wip.memoizedState;
   const updateQueue = wip.updateQueue as UpdateQueue<Element>;
   const pendingUpdate = updateQueue.shared.pending;
   updateQueue.shared.pending = null;
-  const { memoizedState } = processUpdateQueue(baseState, pendingUpdate);
+
+  const { memoizedState } = processUpdateQueue(baseState, pendingUpdate, lane);
   wip.memoizedState = memoizedState;
 
   const nextChildren = wip.memoizedState;
   reconcileChildren(wip, nextChildren);
+
+  console.log('updateHostRoot', wip.child);
   return wip.child;
 }
 
@@ -61,6 +63,7 @@ function updateHostComponent(wip: FiberNode) {
   const nextProps = wip.pendingProps;
   const nextChildren = nextProps.children;
   reconcileChildren(wip, nextChildren);
+  console.log('updateHostComponent', wip.child);
   return wip.child;
 }
 

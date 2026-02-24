@@ -15,10 +15,16 @@ function Child() {
 function App() {
   const [num, setNum] = useState(0);
 
+  function handleClick() {
+    setNum((prevNum) => prevNum + 1);
+    setNum((prevNum) => prevNum + 2);
+    setNum((prevNum) => prevNum + 3);
+  }
+
   return (
     <>
-      <span>App</span>
-      <Child />
+      <span onClick={handleClick}>{num}</span>
+      {/* <Child /> */}
     </>
   );
 }

@@ -10,7 +10,6 @@ function markUpdate(fiber: FiberNode) {
 
 // 比较新旧虚拟DOM，返回需要更新的fiber节点
 export const completeWork = (wip: FiberNode) => {
-  console.log('completeWork', wip);
   const newProps = wip.pendingProps;
   const current = wip.alternate;
 

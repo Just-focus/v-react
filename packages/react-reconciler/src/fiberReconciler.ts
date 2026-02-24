@@ -4,9 +4,9 @@ import { HostRoot } from './workTags';
 import { createUpdate, createUpdateQueue, enqueueUpdate, UpdateQueue } from './updateQueue';
 import { scheduleUpdateOnFiber } from './workLoop';
 import { ReactElementType } from 'shared/ReactTypes';
+import { requestUpdateLane } from './fiberLanes';
 
 export const createContainer = (containerInfo: Container) => {
-  console.log('createContainer', containerInfo);
   const hostRootFiber = new FiberNode(HostRoot, {}, null);
   const root = new FiberRootNode(containerInfo, hostRootFiber);
   hostRootFiber.updateQueue = createUpdateQueue();
@@ -14,10 +14,11 @@ export const createContainer = (containerInfo: Container) => {
 };
 
 export const updateContainer = (element: ReactElementType | null, root: FiberRootNode) => {
-  console.log('updateContainer', element, root);
   const hostRootFiber = root.current;
-  const update = createUpdate<ReactElementType | null>(element);
+  const lane = requestUpdateLane();
+  const update = createUpdate<ReactElementType | null>(element, lane);
+
   enqueueUpdate(hostRootFiber.updateQueue as UpdateQueue<ReactElementType | null>, update);
-  scheduleUpdateOnFiber(hostRootFiber);
+  scheduleUpdateOnFiber(hostRootFiber, lane);
   return element;
 };

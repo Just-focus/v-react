@@ -1,8 +1,11 @@
 import { Dispatch } from 'react/src/currentDispatcher';
 import { Action } from 'shared/ReactTypes';
+import { Lane } from './fiberLanes';
 
 export interface Update<State> {
   action: Action<State>;
+  lane: Lane;
+  next: Update<State> | null;
 }
 
 export interface UpdateQueue<State> {
@@ -12,9 +15,11 @@ export interface UpdateQueue<State> {
   dispatch: Dispatch<State> | null;
 }
 
-export const createUpdate = <State>(action: Action<State>): Update<State> => {
+export const createUpdate = <State>(action: Action<State>, lane: Lane): Update<State> => {
   return {
     action,
+    lane,
+    next: null,
   };
 };
 
@@ -28,35 +33,49 @@ export const createUpdateQueue = <State>() => {
 };
 
 export const enqueueUpdate = <State>(updateQueue: UpdateQueue<State>, update: Update<State>) => {
-  // const pending = updateQueue.shared.pending;
-
-  // if (pending === null) {
-  //   // 没有更新，形成环状链表
-  //   update.next = update;
-  // } else {
-  //   // 已经有更新，插入到环状链表中
-  //   update.next = pending.next;
-  //   pending.next = update;
-  // }
+  const pending = updateQueue.shared.pending;
+  if (pending === null) {
+    update.next = update;
+  } else {
+    update.next = pending.next;
+    pending.next = update;
+  }
+  // pending 指向 update 环状链表的最后一个节点
   updateQueue.shared.pending = update;
 };
 
 export const processUpdateQueue = <State>(
   baseState: State,
   pendingUpdate: Update<State> | null,
+  lane: Lane,
 ): { memoizedState: State } => {
   const result: ReturnType<typeof processUpdateQueue<State>> = {
     memoizedState: baseState,
   };
 
   if (pendingUpdate !== null) {
-    const action = pendingUpdate.action;
+    const firstUpdate = pendingUpdate.next;
+    let pending = pendingUpdate.next as Update<any>;
+    do {
+      const updateLane = pending?.lane;
 
-    if (action instanceof Function) {
-      result.memoizedState = action(result.memoizedState);
-    } else {
-      result.memoizedState = action;
-    }
+      if (updateLane === lane) {
+        const action = pending.action;
+
+        if (action instanceof Function) {
+          baseState = action(baseState);
+        } else {
+          baseState = action;
+        }
+      } else {
+        if (__DEV__) {
+          console.warn('不应该进入当前优先级的更新', pending);
+        }
+      }
+      pending = pending.next as Update<any>;
+    } while (pending !== firstUpdate);
   }
+
+  result.memoizedState = baseState;
   return result;
 };

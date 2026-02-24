@@ -2,6 +2,7 @@ import { Key, Props, ReactElementType, Ref } from 'shared/ReactTypes';
 import { Fragment, FunctionComponent, HostComponent, WorkTag } from './workTags';
 import { Flags, NoFlags } from './fiberFlags';
 import { Container } from 'hostConfig';
+import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
 
 export class FiberNode {
   tag: WorkTag;
@@ -53,12 +54,16 @@ export class FiberRootNode {
   container: Container; // 根节点对应的宿主环境容器
   current: FiberNode; // 当前正在使用的Fiber树
   finishedWork: FiberNode | null; // 已经完成的工作
+  pendingLanes: Lanes; // 待处理的lane
+  finishedLane: Lane; // 已经处理的lane
 
   constructor(container: Container, hostRootFiber: FiberNode) {
     this.container = container;
     this.current = hostRootFiber;
     hostRootFiber.stateNode = this;
     this.finishedWork = null;
+    this.pendingLanes = NoLanes;
+    this.finishedLane = NoLane;
   }
 }
 

@@ -248,7 +248,6 @@ function ChildrenReconciler(shouldTrackEffects: boolean) {
     currentFiber: FiberNode | null,
     newChild?: any,
   ) {
-    console.log('reconcileChildFibers', returnFiber, currentFiber, newChild);
     // 判断Fragment
     const isUnKeyedTopLevelFragment =
       typeof newChild === 'object' &&
