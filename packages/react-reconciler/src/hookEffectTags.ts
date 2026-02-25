@@ -1,0 +1,4 @@
+export const HookHasEffect = 0b00000000000000000000000000000001;
+
+export const Passive = 0b00000000000000000000000000000010; // useEffect
+export const Layout = 0b00000000000000000000000000000100; // useLayoutEffect

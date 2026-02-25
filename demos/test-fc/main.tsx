@@ -1,32 +1,36 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect } from 'react';
 import ReactDom from 'react-dom/client';
 
 function Child() {
-  return (
-    <div>
-      <>
-        <span>Child1</span>
-        <span>Child2</span>
-      </>
-    </div>
-  );
+  useEffect(() => {
+    console.log('Child mount');
+    return () => {
+      console.log('Child unmount');
+    };
+  }, []);
+  return 'i am child';
 }
 
 function App() {
   const [num, setNum] = useState(0);
 
+  useEffect(() => {
+    console.log('App mount');
+  }, []);
+
+  useEffect(() => {
+    console.log('num changed', num);
+
+    return () => {
+      console.log('num changed unmount', num);
+    };
+  }, [num]);
+
   function handleClick() {
-    setNum((prevNum) => prevNum + 1);
-    setNum((prevNum) => prevNum + 2);
-    setNum((prevNum) => prevNum + 3);
+    setNum(1);
   }
 
-  setTimeout(() => {
-    if (num > 0) return;
-    setNum((prevNum) => prevNum + 4);
-  }, 4000);
-
-  return <span>{num}</span>;
+  return <div onClick={handleClick}>{num === 0 ? <Child /> : <span>{num}</span>}</div>;
 }
 
 ReactDom.createRoot(document.getElementById('root')!).render(<App />);
